@@ -177,6 +177,9 @@ describe.each([
               visible: true,
             },
           },
+          uiMetadata: {
+            foo: "bar",
+          },
         }
         const res = await config.api.viewV2.create(newView)
 
@@ -568,6 +571,53 @@ describe.each([
         expect(sum.calculationType).toEqual(CalculationType.SUM)
         expect(sum.field).toEqual("Price")
       })
+
+      it("cannot create a calculation view with more than 5 aggregations", async () => {
+        await config.api.viewV2.create(
+          {
+            tableId: table._id!,
+            name: generator.guid(),
+            schema: {
+              sum: {
+                visible: true,
+                calculationType: CalculationType.SUM,
+                field: "Price",
+              },
+              count: {
+                visible: true,
+                calculationType: CalculationType.COUNT,
+                field: "Price",
+              },
+              min: {
+                visible: true,
+                calculationType: CalculationType.MIN,
+                field: "Price",
+              },
+              max: {
+                visible: true,
+                calculationType: CalculationType.MAX,
+                field: "Price",
+              },
+              avg: {
+                visible: true,
+                calculationType: CalculationType.AVG,
+                field: "Price",
+              },
+              sum2: {
+                visible: true,
+                calculationType: CalculationType.SUM,
+                field: "Price",
+              },
+            },
+          },
+          {
+            status: 400,
+            body: {
+              message: "Calculation views can only have a maximum of 5 fields",
+            },
+          }
+        )
+      })
     })
 
     describe("update", () => {
@@ -639,6 +689,9 @@ describe.each([
               visible: true,
               readonly: true,
             },
+          },
+          uiMetadata: {
+            foo: "bar",
           },
         }
         await config.api.viewV2.update(updatedData)
