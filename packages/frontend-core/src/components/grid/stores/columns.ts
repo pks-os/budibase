@@ -16,7 +16,16 @@ interface DerivedColumnStore {
   hasNonAutoColumn: Readable<boolean>
 }
 
-export type Store = ColumnStore & DerivedColumnStore
+interface ColumnActions {
+  columns: ColumnStore["columns"] & {
+    actions: {
+      changeAllColumnWidths: (width: number) => Promise<void>
+      isReadonly: (column: UIColumn) => boolean
+    }
+  }
+}
+
+export type Store = ColumnStore & DerivedColumnStore & ColumnActions
 
 export const createStores = (): ColumnStore => {
   const columns = writable<UIColumn[]>([])
@@ -95,7 +104,7 @@ export const deriveStores = (context: StoreContext): DerivedColumnStore => {
   }
 }
 
-export const createActions = (context: StoreContext) => {
+export const createActions = (context: StoreContext): ColumnActions => {
   const { columns, datasource } = context
 
   // Updates the width of all columns
@@ -147,12 +156,12 @@ export const initialise = (context: StoreContext) => {
 
   // Merge new schema fields with existing schema in order to preserve widths
   const processColumns = ($enrichedSchema: any) => {
-    if (!$enrichedSchema) {
+    const $definition = get(definition)
+    if (!$enrichedSchema || !$definition) {
       columns.set([])
       return
     }
-    const $definition = get(definition)
-    const $columns = get(columns)
+
     const $displayColumn = get(displayColumn)
 
     // Find primary display
@@ -167,19 +176,20 @@ export const initialise = (context: StoreContext) => {
       Object.keys($enrichedSchema)
         .map(field => {
           const fieldSchema = $enrichedSchema[field]
-          const oldColumn = $columns?.find(col => col.name === field)
           const column: UIColumn = {
             type: fieldSchema.type,
             name: field,
             label: fieldSchema.displayName || field,
             schema: fieldSchema,
-            width: fieldSchema.width || oldColumn?.width || DefaultColumnWidth,
+            width: fieldSchema.width || DefaultColumnWidth,
             visible: fieldSchema.visible ?? true,
             readonly: fieldSchema.readonly,
-            order: fieldSchema.order ?? oldColumn?.order,
+            order: fieldSchema.order,
             conditions: fieldSchema.conditions,
             related: fieldSchema.related,
             calculationType: fieldSchema.calculationType,
+            __left: undefined as any, // TODO
+            __idx: undefined as any, // TODO
           }
           // Override a few properties for primary display
           if (field === primaryDisplay) {
